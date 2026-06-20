@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "rtt_log.h"
+#include "App_Params.h"
 
 /* ========== 系统级全局变量 ========== */
 static uint8_t g_system_initialized = 0;
@@ -566,6 +567,31 @@ void motor_hall_update(motor_hall_handle_t handle)
     
     if (nbDelay_IsComplete_noclose(&inst->hall_check_timer)) {
         check_hall_status(inst);
+
+        /* 霍尔脉冲累积计数 */
+        {
+            uint32_t total = inst->hall_pulse_counts[0] + inst->hall_pulse_counts[1];
+            static uint32_t last_total = 0;
+            static uint8_t first_run = 1;
+            if (first_run) {
+                last_total = total;
+                first_run = 0;
+            }
+            if (total != last_total) {
+            uint32_t delta;
+            if (total > last_total) {
+                delta = total - last_total;
+            } else {
+                delta = last_total - total;  /* 计数器溢出回绕 */
+            }
+            if (inst->current_direction == MOTOR_DIRECTION_FORWARD) {
+                g_s32HallPulseAccum += (int32_t)delta;  /* 开窗(逆时针) → 加 */
+            } else if (inst->current_direction == MOTOR_DIRECTION_REVERSE) {
+                g_s32HallPulseAccum -= (int32_t)delta;  /* 关窗(顺时针) → 减 */
+            }
+            last_total = total;
+        }
+    }
         nbDelay_Start(&inst->hall_check_timer);
     }
 }
