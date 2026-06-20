@@ -649,6 +649,61 @@ void ESystem_Init(void) {
 }
 
 // ========== ?μí3?÷?-?· ==========
+// ========== 热重载配置（替代软件复位） ==========
+/**
+ * @brief 将 g_AppParam 的最新值推送到各个设备模块
+ *        Modbus 写入新配置后调用，避免软件复位
+ */
+void App_ReloadConfig(void)
+{
+    MAIN_D("[RELOAD] Reloading config from g_AppParam...\r\n");
+
+    /* --- 电压母线设备：更新过压/欠压阈值 --- */
+    if (g_voltage_bus_dev != NULL)
+    {
+        g_voltage_bus_dev->stcConfig.u32OvervoltageThresholdMv =
+            (uint32_t)g_AppParam.voltage_upper_limit * 100UL;
+        g_voltage_bus_dev->stcConfig.u32UndervoltageThresholdMv =
+            (uint32_t)g_AppParam.voltage_lower_limit * 100UL;
+        g_voltage_bus_dev->stcConfig.u32OvervoltageHysteresisMv =
+            (uint32_t)g_AppParam.voltage_upper_hysteresis * 100UL;
+        g_voltage_bus_dev->stcConfig.u32UndervoltageHysteresisMv =
+            (uint32_t)g_AppParam.voltage_lower_hysteresis * 100UL;
+        g_voltage_bus_dev->stcConfig.u8OvervoltageTriggerCount =
+            g_AppParam.overvoltage_trigger_count;
+        g_voltage_bus_dev->stcConfig.u8UndervoltageTriggerCount =
+            g_AppParam.undervoltage_trigger_count;
+
+        MAIN_D("[RELOAD] Voltage: over=%lu mV, under=%lu mV\r\n",
+               g_voltage_bus_dev->stcConfig.u32OvervoltageThresholdMv,
+               g_voltage_bus_dev->stcConfig.u32UndervoltageThresholdMv);
+    }
+
+    /* --- 电流传感器设备：更新过流阈值 --- */
+    if (g_sensor_current_dev != NULL)
+    {
+        g_sensor_current_dev->stcConfig.s32OvercurrentThresholdMa =
+            (int32_t)g_AppParam.current_upper_limit;
+        g_sensor_current_dev->stcConfig.u32TriggerWindowMs =
+            (uint32_t)g_AppParam.current_detect_ms;
+        g_sensor_current_dev->stcConfig.u32ReleaseWindowMs =
+            (uint32_t)g_AppParam.current_release_ms;
+        g_sensor_current_dev->stcConfig.s32OvercurrentHysteresisMa =
+            (int32_t)g_AppParam.current_hysteresis_ma;
+
+        MAIN_D("[RELOAD] Current: threshold=%ld mA, trigger=%lu ms, release=%lu ms\r\n",
+               (long)g_sensor_current_dev->stcConfig.s32OvercurrentThresholdMa,
+               (unsigned long)g_sensor_current_dev->stcConfig.u32TriggerWindowMs,
+               (unsigned long)g_sensor_current_dev->stcConfig.u32ReleaseWindowMs);
+    }
+
+    /* --- 转速/角度目标值直接从 g_AppParam 读取，无需推送 --- */
+    /* --- 设备地址 (node_id) 已写入 Flash，下次 Param_Init 时生效 --- */
+
+    MAIN_D("[RELOAD] Config reload complete.\r\n");
+}
+
+
 void ESystem_MainLoop(void) {
     static uint32_t last_loop_time = 0;
     uint32_t now = tickTimer_GetCount();

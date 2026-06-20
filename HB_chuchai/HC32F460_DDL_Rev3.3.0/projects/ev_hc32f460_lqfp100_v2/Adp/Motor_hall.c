@@ -183,7 +183,12 @@ static void hall_b_irq_callback(void)
         }
         
         uint8_t hall_a_state = (GPIO_ReadInputPins(inst->irq_config.hall_a_port, inst->irq_config.hall_a_pin) == PIN_SET);
-        motor_direction_t detected_direction = hall_a_state ? MOTOR_DIRECTION_FORWARD : MOTOR_DIRECTION_REVERSE;
+        motor_direction_t detected_direction;
+#ifdef HALL_DIRECTION_INVERT
+        detected_direction = hall_a_state ? MOTOR_DIRECTION_REVERSE : MOTOR_DIRECTION_FORWARD;
+#else
+        detected_direction = hall_a_state ? MOTOR_DIRECTION_FORWARD : MOTOR_DIRECTION_REVERSE;
+#endif
         
         if (inst->current_direction != detected_direction) {
             inst->direction_confirm_count++;

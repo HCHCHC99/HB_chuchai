@@ -158,6 +158,7 @@ extern SystemStatus_t g_status;
 
 void ESystem_Init(void);
 void ESystem_MainLoop(void);
+void App_ReloadConfig(void);
 
 #if ENABLE_SIMULATION_MODE
 void Sim_ProcessInput(void);

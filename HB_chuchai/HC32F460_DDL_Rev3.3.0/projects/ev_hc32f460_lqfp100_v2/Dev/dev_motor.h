@@ -36,6 +36,8 @@
     // 整合板：4通道 PWM 占空比控制，缓启动/缓停
     #define MOTOR_CONTROL_MODE  1
 #endif
+/* 电机方向反转（当电机接线反时启用，交换正转/反转输出）*/
+//#define MOTOR_DIRECTION_INVERT
 
 // ========== ����豸�����붨�� ==========
 // ע�⣺CMD_BASE_MOTOR �� device_manager.h ��û��Ԥ���壬���ﶨ��
