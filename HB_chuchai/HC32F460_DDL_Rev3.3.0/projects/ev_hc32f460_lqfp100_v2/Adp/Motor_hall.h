@@ -55,7 +55,7 @@ typedef struct {
 /* �Զ�����ÿת�������������� �� ������ �� 2��˫���أ� */
 #define CALC_PULSES_PER_REV(pole_pairs, hall_count) ((pole_pairs) * (hall_count) * 2)
 /* 霍尔方向反转（当A/B接线反时启用�?*/
-#define HALL_DIRECTION_INVERT
+// #define HALL_DIRECTION_INVERT
 
 /* ========== ����״̬ö�� ========== */
 typedef enum {
