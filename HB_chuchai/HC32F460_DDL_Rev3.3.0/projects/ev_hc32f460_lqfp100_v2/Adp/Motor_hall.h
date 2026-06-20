@@ -33,7 +33,7 @@ typedef struct {
 } motor_hall_config_t;
 
 
-/* ========== Ĭ������ʾ����ԭ�������? - PA9, PA10�� ========== */
+/* ========== Ĭ������ʾ����ԭ�������? - PA9, PA10�� ========== */
 #define DEFAULT_HALL_A_PORT      GPIO_PORT_A
 #define DEFAULT_HALL_A_PIN       GPIO_PIN_09
 #define DEFAULT_HALL_B_PORT      GPIO_PORT_A
@@ -48,13 +48,13 @@ typedef struct {
 
 #define DEFAULT_HALL_IRQ_PRIORITY DDL_IRQ_PRIORITY_02
 
-/* Ĭ�ϵ������? */
+/* Ĭ�ϵ������? */
 #define DEFAULT_POLE_PAIRS       (3)     
 #define DEFAULT_HALL_COUNT       (2)     
 
 /* �Զ�����ÿת�������������� �� ������ �� 2��˫���أ� */
 #define CALC_PULSES_PER_REV(pole_pairs, hall_count) ((pole_pairs) * (hall_count) * 2)
-/* 霍尔方向反转（当A/B接线反时启用�?*/
+/* 霍尔方向反转（当A/B接线反时启用�?*/
 // #define HALL_DIRECTION_INVERT
 
 /* ========== ����״̬ö�� ========== */
@@ -74,7 +74,7 @@ typedef enum {
     HALL_STATUS_ERROR
 } hall_working_status_t;
 
-/* ========== �����������͸��ָ��? ========== */
+/* ========== �����������͸��ָ��? ========== */
 typedef struct motor_hall_handle_t* motor_hall_handle_t;
 
 /* ========== ����/���ٽӿ� ========== */
@@ -89,7 +89,7 @@ void motor_hall_start(motor_hall_handle_t handle);
 void motor_hall_stop(motor_hall_handle_t handle);
 void motor_hall_update(motor_hall_handle_t handle);
 
-/* ========== ת����ؽӿ�? ========== */
+/* ========== ת����ؽӿ�? ========== */
 
 float motor_hall_get_rpm(motor_hall_handle_t handle);
 float motor_hall_get_rpm_raw(motor_hall_handle_t handle);
@@ -97,7 +97,7 @@ uint32_t motor_hall_get_pulse_interval_us(motor_hall_handle_t handle);
 uint8_t motor_hall_is_running(motor_hall_handle_t handle);
 uint8_t motor_hall_is_stalled(motor_hall_handle_t handle);
 
-/* ========== ������ؽӿ�? ========== */
+/* ========== ������ؽӿ�? ========== */
 
 motor_direction_t motor_hall_get_direction(motor_hall_handle_t handle);
 uint8_t motor_hall_get_direction_confidence(motor_hall_handle_t handle);
@@ -113,5 +113,6 @@ hall_working_status_t motor_hall_get_status(motor_hall_handle_t handle);
 uint8_t motor_hall_get_active_hall_count(motor_hall_handle_t handle);
 uint16_t motor_hall_get_pulses_per_rev(motor_hall_handle_t handle);
 uint8_t motor_hall_get_pole_pairs(motor_hall_handle_t handle);
+void motor_hall_set_pole_pairs(motor_hall_handle_t handle, uint8_t pole_pairs);
 
 #endif /* MOTOR_HALL_H */

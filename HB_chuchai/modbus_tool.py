@@ -28,9 +28,11 @@ CONFIG_REGS = [
     (0x2716, "电流上限",       None,         "mA"),
     (0x271C, "关窗极限角度",   None,         "0.1°"),
     (0x271D, "开窗极限角度",   None,         "0.1°"),
-    (0x271E, "电流检测时间",   None,         "ms"),
-    (0x3710, "霍尔方向",       ["正常", "反转"], ""),
-    (0x3711, "电机方向",       ["正常", "反转"], ""),
+    (0x271E, "电流检测时间",       None,         "ms"),
+    (0x3710, "霍尔方向",           ["正常", "反转"], ""),
+    (0x3711, "电机方向",           ["正常", "反转"], ""),
+    (0x3712, "减速比",             None,         "默认1183"),
+    (0x3713, "电机极对数",         None,         "默认3"),
 ]
 
 REALTIME_REGS = [
@@ -66,8 +68,9 @@ def ask_value():
 def menu_read_realtime():
     print("\n====== 读实时数据 =====")
     for i, (addr, name, unit) in enumerate(REALTIME_REGS):
-        unit_str = f" ({unit})" if unit else ""
-        print(f"  {i+1}. {name}{unit_str}")
+        addr_str = f"（0x{addr:04X}）"
+        unit_str = f" [单位：{unit}]" if unit else ""
+        print(f"  {i+1}. {name}{addr_str}{unit_str}")
     print("  0. 返回")
     choice = input("选择: ").strip()
     if choice == '0': return
@@ -128,7 +131,9 @@ def menu_control():
 def menu_read_config():
     print("\n====== 读配置寄存器 =====")
     for i, (addr, name, opts, unit) in enumerate(CONFIG_REGS):
-        print(f"  {i+1}. {name}")
+        addr_str = f"（0x{addr:04X}）"
+        unit_str = f" [单位：{unit}]" if unit else ""
+        print(f"  {i+1}. {name}{addr_str}{unit_str}")
     print("  0. 返回")
     choice = input("选择: ").strip()
     if choice == '0': return
@@ -159,7 +164,9 @@ def menu_read_config():
 def menu_write_config():
     print("\n====== 写配置寄存器 =====")
     for i, (addr, name, opts, unit) in enumerate(CONFIG_REGS):
-        print(f"  {i+1}. {name}")
+        addr_str = f"（0x{addr:04X}）"
+        unit_str = f" [单位：{unit}]" if unit else ""
+        print(f"  {i+1}. {name}{addr_str}{unit_str}")
     print("  0. 返回")
     choice = input("选择: ").strip()
     if choice == '0': return

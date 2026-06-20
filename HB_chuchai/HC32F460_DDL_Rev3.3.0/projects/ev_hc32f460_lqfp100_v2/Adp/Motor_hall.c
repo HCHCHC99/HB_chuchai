@@ -711,3 +711,10 @@ uint8_t motor_hall_get_pole_pairs(motor_hall_handle_t handle)
     motor_hall_instance_t* inst = (motor_hall_instance_t*)handle;
     return inst->config.pole_pairs;
 }
+
+void motor_hall_set_pole_pairs(motor_hall_handle_t handle, uint8_t pole_pairs)
+{
+    if (!handle || pole_pairs == 0) return;
+    motor_hall_instance_t* inst = (motor_hall_instance_t*)handle;
+    inst->config.pole_pairs = pole_pairs;
+}
