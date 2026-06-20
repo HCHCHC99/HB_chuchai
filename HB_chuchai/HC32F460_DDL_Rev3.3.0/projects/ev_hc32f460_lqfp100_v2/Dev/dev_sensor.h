@@ -1,0 +1,187 @@
+#ifndef DEV_SENSOR_H_
+#define DEV_SENSOR_H_
+
+#include "device_manager.h"
+#include "dev_adc.h"
+#include "TickTimer.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include "Adapter.h"
+#include "rtt_manager.h"
+
+// ========== 分压模式选择 ==========
+// 0: 无分压（传感器直接接MCU，0~3.3V对应0~2A）
+// 1: 有分压（外部分压电阻）
+#define SENSOR_VOLTAGE_DIVIDER_ENABLE    0   // 1=有分压, 0=无分压
+
+// ========== 分压电阻参数（仅当有分压模式时有效） ==========
+#if SENSOR_VOLTAGE_DIVIDER_ENABLE
+    #define SENSOR_DIVIDER_R1            (10000)   // 上分压电阻 R1 (Ω)
+    #define SENSOR_DIVIDER_R2            (20000)   // 下分压电阻 R2 (Ω)
+
+
+#endif
+// ========== 电流传感器类型选择 ==========
+// 0: 霍尔电流传感器模式 (中点1650mV, 灵敏度66mV/A, 量程±25A)
+// 1: 差分运放模式 (Vout = I * 0.1, 0mV为零点, 100mV/A)
+#define SENSOR_TYPE_DIFF_AMP_ENABLE    1   // 1=差分运放, 0=霍尔电流传感器
+
+// ========== 调试宏定义 ==========
+#ifdef DEV_SENSOR
+    #define SENSOR_DEBUG(fmt, ...)    MAIN_D("[SENSOR] " fmt, ##__VA_ARGS__)
+#else
+    #define SENSOR_DEBUG(fmt, ...)    ((void)0)
+#endif
+
+#ifdef DEV_SENSOR_REAL
+    #define SENSOR_REAL_DEBUG(fmt, ...)    MAIN_D("[SENSOR_REAL] " fmt, ##__VA_ARGS__)
+#else
+    #define SENSOR_REAL_DEBUG(fmt, ...)    ((void)0)
+#endif
+
+#ifdef DEV_SENSOR_SLOW
+    #define SENSOR_DEBUG_SLOW(fmt, ...)    MAIN_D("[SENSOR] " fmt, ##__VA_ARGS__)
+#else
+    #define SENSOR_DEBUG_SLOW(fmt, ...)    ((void)0)
+#endif
+
+// ========== 模拟模式宏定义 ==========
+// #define SENSOR_SIMULATION_MODE
+
+// ========== 过流检测模式 ==========
+#define OVERCURRENT_MODE_SAMPLE_COUNT    0
+#define OVERCURRENT_MODE_TIME_WINDOW     1
+
+// ========== 过流告警清除模式选择 ==========
+#define OVERCURRENT_CLEAR_AUTO      0
+#define OVERCURRENT_CLEAR_MANUAL    1
+
+#ifndef OVERCURRENT_CLEAR_MODE
+#define OVERCURRENT_CLEAR_MODE      OVERCURRENT_CLEAR_MANUAL   
+#endif
+
+// ========== DEBUG看缓冲区 ==========
+#define DEBUG_SENSOR_WINDOW_BUFFER
+#define SENSOR_WINDOW_BUFFER_SIZE     (200)
+
+// ========== 电流传感器硬件参数 ==========
+#if SENSOR_TYPE_DIFF_AMP_ENABLE
+    // ===== 差分运放模式参数 (LM358 IBUS电路) =====
+    // 输出特性: Vout = I * 0.1, 即 100mV/A
+    #define SENSOR_RAW_ZERO_MV             (0)
+    #define SENSOR_RAW_SENSITIVITY_MV_PER_A (100)
+#else
+    // ===== 霍尔电流传感器模式参数 (原HB_chuchai) =====
+    #define SENSOR_RAW_ZERO_MV             (1650)
+    #define SENSOR_RAW_SENSITIVITY_MV_PER_A (66)
+#endif
+
+#if SENSOR_VOLTAGE_DIVIDER_ENABLE
+    #define SENSOR_VOUT_ZERO_MA_INT     (SENSOR_RAW_ZERO_MV * SENSOR_DIVIDER_R2 / (SENSOR_DIVIDER_R1 + SENSOR_DIVIDER_R2))
+    #define SENSOR_SENSITIVITY_INT      (SENSOR_RAW_SENSITIVITY_MV_PER_A * SENSOR_DIVIDER_R2 / (SENSOR_DIVIDER_R1 + SENSOR_DIVIDER_R2))
+    #define SENSOR_VOUT_ZERO_MV         ((float)SENSOR_VOUT_ZERO_MA_INT)
+    #define SENSOR_SENSITIVITY_MV_PER_A ((float)SENSOR_SENSITIVITY_INT)
+#else
+    #define SENSOR_VOUT_ZERO_MA_INT     (SENSOR_RAW_ZERO_MV)
+    #define SENSOR_SENSITIVITY_INT      (SENSOR_RAW_SENSITIVITY_MV_PER_A)
+    #define SENSOR_VOUT_ZERO_MV         ((float)SENSOR_VOUT_ZERO_MA_INT)
+    #define SENSOR_SENSITIVITY_MV_PER_A ((float)SENSOR_SENSITIVITY_INT)
+#endif
+
+// ========== 电流传感器设备命令码 ==========
+#define CMD_SENSOR_GET_CURRENT_MA      (CMD_BASE_ADC + 0x20)
+#define CMD_SENSOR_GET_CURRENT_AX100   (CMD_BASE_ADC + 0x21)
+#define CMD_SENSOR_SET_SIM_VALUE       (CMD_BASE_ADC + 0x22)
+#define CMD_SENSOR_GET_ALARM_STATUS    (CMD_BASE_ADC + 0x23)
+#define CMD_SENSOR_GET_CALIBRATION     (CMD_BASE_ADC + 0x24)
+
+// ========== 校准参数结构体 ==========
+typedef struct {
+    int32_t s32ZeroOffsetMv;
+    int16_t s16SensitivityScale;
+    int32_t s32CalibrationValid;
+} Sensor_Calibration_t;
+
+// ========== 电流传感器设备配置 ==========
+typedef struct {
+    uint8_t     u8AdcDevId;
+    int32_t     s32OvercurrentThresholdMa;
+    int32_t     s32OvercurrentHysteresisMa;
+    uint8_t     u8OvercurrentMode;
+    uint16_t    u16TriggerWindowSize;
+    uint16_t    u16ReleaseWindowSize;
+    uint32_t    u32TriggerWindowMs;
+    uint32_t    u32ReleaseWindowMs;
+} Sensor_Config_t;
+
+// ========== 过流检测状态 ==========
+typedef struct {
+    uint8_t  u8OvercurrentAlarm;
+    uint16_t u16ConsecutiveCount;
+    NonBlockingDelay_t stcTriggerTimer;
+    NonBlockingDelay_t stcReleaseTimer;
+    uint8_t  u8TimerRunning;
+} Sensor_AlarmState_t;
+
+// ========== 电流告警事件结构体 ==========
+typedef struct {
+    int32_t  s32CurrentMa;
+    int32_t  s32ThresholdMa;
+    uint8_t  u8IsActive;
+} Current_AlarmEvent_t;
+
+// ========== 电流传感器设备结构体 ==========
+typedef struct {
+    Sensor_Config_t     stcConfig;
+    uint8_t             u8Initialized;
+    Sensor_Calibration_t stcCalibration;
+    uint16_t            u16AdcRawValue;
+    uint16_t            u16AdcVoltageMv;
+    int32_t             s32CurrentMa;
+    int16_t             s16CurrentAx100;
+    Sensor_AlarmState_t stcAlarmState;
+    uint32_t            u32LastUpdateTime;
+    uint8_t             u8Calibrated;
+    uint32_t            u32InitTime;
+} Sensor_Device_t;
+
+// ========== 读取响应结构体 ==========
+typedef struct {
+    int32_t  s32CurrentMa;
+    int16_t  s16CurrentAx100;
+    uint16_t u16AdcRawValue;
+    uint16_t u16AdcVoltageMv;
+} Sensor_ReadResponse_t;
+
+// ========== 标准设备操作 ==========
+DeviceResult_t Sensor_Device_Init(void* handle);
+DeviceResult_t Sensor_Device_Deinit(void* handle);
+DeviceResult_t Sensor_Device_Read(void* handle, void* data, uint32_t size);
+DeviceResult_t Sensor_Device_Write(void* handle, const void* data, uint32_t size);
+DeviceResult_t Sensor_Device_Control(void* handle, DeviceCommandData_t* cmd);
+DeviceResult_t Sensor_Device_Update(void* handle);
+
+// ========== 电流传感器特定接口 ==========
+int32_t Sensor_Device_GetCurrentMA(Sensor_Device_t* pstcDev);
+int16_t Sensor_Device_GetCurrentAx100(Sensor_Device_t* pstcDev);
+Sensor_Device_t* Sensor_Device_Create(const Sensor_Config_t* pstcConfig);
+
+// ========== 校准接口 ==========
+void Sensor_Device_CalibrateZero(Sensor_Device_t* pstcDev);
+void Sensor_Device_SetSensitivityScale(Sensor_Device_t* pstcDev, int16_t s16ScalePercent);
+void Sensor_Device_GetCalibration(Sensor_Device_t* pstcDev, Sensor_Calibration_t* pstcCal);
+
+// ========== 模拟模式接口 ==========
+#ifdef SENSOR_SIMULATION_MODE
+void Sensor_SetSimulationValue(uint16_t u16VoltageMv);      // 设置传感器原始电压(mV)
+void Sensor_SetSimulationCurrent(int32_t s32CurrentMa);     // 直接设置电流值(mA)
+uint16_t Sensor_GetSimulationSensorRawMv(void);             // 获取当前模拟的传感器原始电压
+#endif
+
+// ========== 过流告警手动清除接口 ==========
+void Sensor_Device_ClearAlarm(Sensor_Device_t* pstcDev);
+
+// ========== 全局操作函数表 ==========
+extern const DeviceOps_t g_sensor_ops;
+
+#endif /* DEV_SENSOR_H_ */
