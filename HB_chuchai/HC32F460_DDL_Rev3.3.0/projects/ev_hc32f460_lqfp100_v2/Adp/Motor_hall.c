@@ -1,4 +1,5 @@
 #include "Motor_hall.h"
+#include "App_Params.h"
 #include "timer6_timebase.h"
 #include "TickTimer.h"
 #include "hc32_ll_gpio.h"
@@ -7,11 +8,11 @@
 #include <stdlib.h>
 #include "rtt_log.h"
 
-/* ========== ÏµÍ³¼¶È«¾Ö±äÁ¿ ========== */
+/* ========== ç³»ç»Ÿçº§å…¨å±€å˜é‡ ========== */
 static uint8_t g_system_initialized = 0;
 static uint8_t g_next_handle_id = 0;
 
-/* ========== ²âÁ¿²ÎÊıÅäÖÃ ========== */
+/* ========== æµ‹é‡å‚æ•°é…ç½® ========== */
 #define MIN_PULSE_INTERVAL_US       (50u)
 #define MAX_PULSE_INTERVAL_US       (200000u)
 #define STALL_DETECTION_MS          (500u)
@@ -21,7 +22,7 @@ static uint8_t g_next_handle_id = 0;
 #define HALL_CHECK_INTERVAL_MS      (1000)
 #define HALL_WARNING_THRESHOLD      (10)
 
-/* ========== µç»úÊµÀıÄÚ²¿Êı¾İ½á¹¹ ========== */
+/* ========== ç”µæœºå®ä¾‹å†…éƒ¨æ•°æ®ç»“æ„ ========== */
 typedef struct {
     uint8_t id;
     uint8_t valid;
@@ -88,7 +89,7 @@ static motor_hall_instance_t* g_hall_b_map[16] = {NULL};
 static motor_hall_instance_t* g_current_hall_a_instance = NULL;
 static motor_hall_instance_t* g_current_hall_b_instance = NULL;
 
-/* ========== ÄÚ²¿º¯ÊıÉùÃ÷ ========== */
+/* ========== å†…éƒ¨å‡½æ•°å£°æ˜ ========== */
 static void update_rpm_filter(motor_hall_instance_t* inst, float new_rpm);
 static float calculate_average_interval(motor_hall_instance_t* inst);
 static float interval_to_rpm(motor_hall_instance_t* inst, uint32_t interval_us);
@@ -96,7 +97,7 @@ static void perform_stall_detection(motor_hall_instance_t* inst);
 static void check_hall_status(motor_hall_instance_t* inst);
 static uint8_t calculate_active_hall_count(motor_hall_instance_t* inst);
 
-/* ========== ÏµÍ³³õÊ¼»¯ ========== */
+/* ========== ç³»ç»Ÿåˆå§‹åŒ– ========== */
 void motor_hall_system_init(void)
 {
     if (g_system_initialized) return;
@@ -111,7 +112,7 @@ void motor_hall_system_init(void)
     g_system_initialized = 1;
 }
 
-/* ========== ¸¨Öúº¯Êı ========== */
+/* ========== è¾…åŠ©å‡½æ•° ========== */
 
 static uint8_t calculate_active_hall_count(motor_hall_instance_t* inst)
 {
@@ -121,7 +122,7 @@ static uint8_t calculate_active_hall_count(motor_hall_instance_t* inst)
     return count;
 }
 
-/* ========== ÖĞ¶Ï»Øµ÷º¯Êı£¨È«¾Ö£© ========== */
+/* ========== ä¸­æ–­å›è°ƒå‡½æ•°ï¼ˆå…¨å±€ï¼‰ ========== */
 
 static void hall_a_irq_callback(void)
 {
@@ -184,11 +185,11 @@ static void hall_b_irq_callback(void)
         
         uint8_t hall_a_state = (GPIO_ReadInputPins(inst->irq_config.hall_a_port, inst->irq_config.hall_a_pin) == PIN_SET);
         motor_direction_t detected_direction;
-#ifdef HALL_DIRECTION_INVERT
-        detected_direction = hall_a_state ? MOTOR_DIRECTION_REVERSE : MOTOR_DIRECTION_FORWARD;
-#else
-        detected_direction = hall_a_state ? MOTOR_DIRECTION_FORWARD : MOTOR_DIRECTION_REVERSE;
-#endif
+if (g_AppParam.motor_hall_dir != 0) {
+            detected_direction = hall_a_state ? MOTOR_DIRECTION_REVERSE : MOTOR_DIRECTION_FORWARD;
+        } else {
+            detected_direction = hall_a_state ? MOTOR_DIRECTION_FORWARD : MOTOR_DIRECTION_REVERSE;
+        }
         
         if (inst->current_direction != detected_direction) {
             inst->direction_confirm_count++;
@@ -432,7 +433,7 @@ static void calculate_rpm(motor_hall_instance_t* inst)
     }
 }
 
-/* ========== ¹«¿ª½Ó¿ÚÊµÏÖ ========== */
+/* ========== å…¬å¼€æ¥å£å®ç° ========== */
 
 motor_hall_handle_t motor_hall_create(const motor_hall_config_t* config)
 {
@@ -455,14 +456,14 @@ motor_hall_handle_t motor_hall_create(const motor_hall_config_t* config)
     motor_hall_instance_t* inst = &g_instances[i];
     memset(inst, 0, sizeof(motor_hall_instance_t));
     
-    // ========== Öğ¸ö³ÉÔ±¸³Öµ£¬²»Ê¹ÓÃ memcpy ==========
-    // GPIOÅäÖÃ
+    // ========== é€ä¸ªæˆå‘˜èµ‹å€¼ï¼Œä¸ä½¿ç”¨ memcpy ==========
+    // GPIOé…ç½®
     inst->config.hall_a_port = config->hall_a_port;
     inst->config.hall_a_pin = config->hall_a_pin;
     inst->config.hall_b_port = config->hall_b_port;
     inst->config.hall_b_pin = config->hall_b_pin;
     
-    // ÖĞ¶ÏÅäÖÃ
+    // ä¸­æ–­é…ç½®
     inst->config.eirq_ch_a = config->eirq_ch_a;
     inst->config.eirq_ch_b = config->eirq_ch_b;
     inst->config.irqn_a = config->irqn_a;
@@ -471,12 +472,12 @@ motor_hall_handle_t motor_hall_create(const motor_hall_config_t* config)
     inst->config.irq_src_b = config->irq_src_b;
     inst->config.irq_priority = config->irq_priority;
     
-    // µç»ú²ÎÊı
+    // ç”µæœºå‚æ•°
     inst->config.pole_pairs = config->pole_pairs;
     inst->config.hall_count = config->hall_count;
     inst->config.custom_pulses_per_rev = config->custom_pulses_per_rev;
     
-    // µ÷ÊÔ´òÓ¡£¬È·ÈÏ¸³ÖµÕıÈ·
+    // è°ƒè¯•æ‰“å°ï¼Œç¡®è®¤èµ‹å€¼æ­£ç¡®
     MAIN_D("motor_hall_create: instance %d\r\n", i);
     MAIN_D("  hall_a_port=%d, hall_a_pin=0x%04X\r\n", 
            inst->config.hall_a_port, inst->config.hall_a_pin);
@@ -489,7 +490,7 @@ motor_hall_handle_t motor_hall_create(const motor_hall_config_t* config)
     MAIN_D("  irq_src_a=%lu, irq_src_b=%lu\r\n", 
            inst->config.irq_src_a, inst->config.irq_src_b);
     
-    // ±£´æ irq_config ¸±±¾£¨ÓÃÓÚÖĞ¶Ï»Øµ÷£©
+    // ä¿å­˜ irq_config å‰¯æœ¬ï¼ˆç”¨äºä¸­æ–­å›è°ƒï¼‰
     inst->irq_config.hall_a_port = config->hall_a_port;
     inst->irq_config.hall_a_pin = config->hall_a_pin;
     inst->irq_config.hall_b_port = config->hall_b_port;
@@ -569,7 +570,7 @@ void motor_hall_update(motor_hall_handle_t handle)
     }
 }
 
-/* ========== ×ªËÙÏà¹Ø½Ó¿Ú ========== */
+/* ========== è½¬é€Ÿç›¸å…³æ¥å£ ========== */
 
 float motor_hall_get_rpm(motor_hall_handle_t handle)
 {
@@ -613,7 +614,7 @@ uint8_t motor_hall_is_stalled(motor_hall_handle_t handle)
     return inst->stalled;
 }
 
-/* ========== ·½ÏòÏà¹Ø½Ó¿Ú ========== */
+/* ========== æ–¹å‘ç›¸å…³æ¥å£ ========== */
 
 motor_direction_t motor_hall_get_direction(motor_hall_handle_t handle)
 {
@@ -641,7 +642,7 @@ uint8_t motor_hall_is_direction_changed(motor_hall_handle_t handle)
     return changed;
 }
 
-/* ========== »ô¶û¼ÆÊı½Ó¿Ú ========== */
+/* ========== éœå°”è®¡æ•°æ¥å£ ========== */
 
 uint32_t motor_hall_get_hall_a_count(motor_hall_handle_t handle)
 {

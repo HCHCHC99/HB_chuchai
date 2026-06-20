@@ -1,80 +1,38 @@
 # -*- coding: utf-8 -*-
 """
-Modbus command generator - Simple version
-Usage:
-  1. Modify the config values below
-  2. Run: py modbus_test_cmds.py
-  3. Copy the output command
+Modbus RTU 指令生成器
+用法:
+  1. 修改下方 OPERATION / REG_ADDR / WRITE_VALUE 等参数
+  2. 运行: py modbus_test_cmds.py
+  3. 复制输出的十六进制指令帧（已含 CRC）
 =============================================================================
 """
 
 # =============================================================================
-# ===== USER CONFIG =====
+# ===== 用户配置 =====
 # =============================================================================
 
-# Device address
+# 设备地址 (1~247)
 NODE_ID = 1
 
-# Operation: "READ" or "WRITE" or "CLEAR_FAULT" or "CTRL_CMD"
+# 操作类型: "READ" / "WRITE" / "CLEAR_FAULT" / "CTRL_CMD"
 OPERATION = "CTRL_CMD"
 
-# Register address (hex) - only for READ/WRITE
-REG_ADDR = 0x2737   # REG_CTRL_CMD
+# 寄存器地址 (WRITE/READ 时有效)
+REG_ADDR = 0x3710   # 默认: REG_MOTOR_HALL_DIR
 
-# Value to write (only for WRITE, negative auto-converted)
-WRITE_VALUE = 2000
+# 写入值 (WRITE 时有效, 负数自动转为 uint16)
+WRITE_VALUE = 1
 
-# Control
-CTRL_CMD_VALUE = 0x0008   
+# 控制命令 (CTRL_CMD 时有效)
+CTRL_CMD_VALUE = 0x0008   # RESET
 
-# ===== Fault clear config (only for OPERATION = "CLEAR_FAULT") =====
-# Select fault bits to clear (can combine with |):
-#   0x0001 = Overvoltage (FAULT_BIT_OVERVOLTAGE)
-#   0x0002 = Overcurrent (FAULT_BIT_OVERCURRENT)
-#   0x0004 = Overtemp    (FAULT_BIT_OVERTEMP)
-#   0x0008 = Reset       (FAULT_BIT_RESET)
-#   0x0010 = Overload    (FAULT_BIT_OVERLOAD)
-#   0x0020 = Stall       (FAULT_BIT_STALL)
-#   0x0040 = Undervoltage(FAULT_BIT_UNDERVOLTAGE)
-#   0x0000 = Clear all faults
-CLEAR_FAULT_BITS = 0x0000   # default: clear undervoltage
+# 故障清除 (CLEAR_FAULT 时有效)
+CLEAR_FAULT_BITS = 0x0000   # 0=清除全部故障
 
-# ===== REG_CTRL_CMD (0x2720) config (only for OPERATION = "CTRL_CMD") =====
-# Bit definition:
-#   bit0 = START  (enable RS485 control)
-#   bit1 = STOP   (disable RS485 control)
-#   bit2 = ESTOP  (cancel rotation, keep RS485 control)
-#   bit4 = FWD    (forward, only valid after START)
-#   bit5 = REV    (reverse, only valid after START)
-#
-# Usage steps:
-#   1. Send START (0x0001) to enable RS485 control
-#   2. Send FWD (0x0011) or REV (0x0021)
-#   3. Send STOP (0x0002) to disable RS485 control
-#   4. Send ESTOP (0x0004) to cancel rotation without disabling RS485
-#
-# Common values:
-#   0x0001 = START 	(enable RS485 control)	01 06 27 20 00 01 43 74
-#   0x0002 = STOP 	(disable RS485 control)	01 06 27 20 00 02 03 75
-#   0x0004 = ESTOP	(cancel rotation)			01 06 27 20 00 04 83 77
-#   0x0008 = RESET							
-#   0x0010 = FWD     	(bit0=1, bit4=1)			01 06 27 20 00 10 83 78
-#   0x0020 = REV  	(bit0=1, bit5=1)			01 06 27 20 00 20 83 6C
-
-
-#===== READ=====
-# REG_REAL_SPEED              		(0x2730)    		01 03 27 30 00 01 8E B1
-# REG_REAL_ANGLE              		(0x2731)   		01 03 27 31 00 01 DF 71
-# REG_REAL_VOLTAGE            		(0x2732)   		01 03 27 32 00 01 2F 71
-# REG_REAL_CURRENT            		(0x2733)   		01 03 27 30 00 01 8E B1
-# REG_REAL_DIRECTION          		(0x2737)   		01 03 27 37 00 01 3F 70
-
-
-
-# REG_FAULT_STATUS           		(0x2740U)  
-# ===== END CONFIG =====
 # =============================================================================
-
+# ===== CRC 计算 =====
+# =============================================================================
 
 def modbus_crc16(data):
     crc = 0xFFFF
@@ -87,119 +45,122 @@ def modbus_crc16(data):
                 crc >>= 1
     return crc
 
-
 def make_frame(data_bytes):
     crc = modbus_crc16(data_bytes)
     frame = list(data_bytes) + [crc & 0xFF, (crc >> 8) & 0xFF]
     return ' '.join(f'{b:02X}' for b in frame)
-
 
 def to_u16(val):
     if val < 0:
         return val + 65536
     return val
 
+# =============================================================================
+# ===== 常用指令速查（含 CRC） =====
+# =============================================================================
 
-# Fault bit name mapping
-FAULT_NAMES = {
-    0x0001: "Overvoltage",
-    0x0002: "Overcurrent",
-    0x0004: "Overtemp",
-    0x0008: "Reset",
-    0x0010: "Overload",
-    0x0020: "Stall",
-    0x0040: "Undervoltage",
+PRESET_CMDS = {
+    # --- 控制命令 REG_CTRL_CMD (0x2720) ---
+    "START":        [0x01,0x06,0x27,0x20,0x00,0x01],
+    "STOP":         [0x01,0x06,0x27,0x20,0x00,0x02],
+    "ESTOP":        [0x01,0x06,0x27,0x20,0x00,0x04],
+    "RESET":        [0x01,0x06,0x27,0x20,0x00,0x08],
+    "FWD":          [0x01,0x06,0x27,0x20,0x00,0x11],   # START + FWD
+    "REV":          [0x01,0x06,0x27,0x20,0x00,0x21],   # START + REV
+
+    # --- 读取实时数据 (0x03) ---
+    "READ_SPEED":   [0x01,0x03,0x27,0x30,0x00,0x01],
+    "READ_ANGLE":   [0x01,0x03,0x27,0x31,0x00,0x01],
+    "READ_VOLTAGE": [0x01,0x03,0x27,0x32,0x00,0x01],
+    "READ_CURRENT": [0x01,0x03,0x27,0x33,0x00,0x01],
+    "READ_DIR":     [0x01,0x03,0x27,0x37,0x00,0x01],
+    "READ_FAULT":   [0x01,0x03,0x27,0x40,0x00,0x01],
+
+    # --- 读取配置参数 (0x03) ---
+    "READ_NODE_ID":       [0x01,0x03,0x27,0x10,0x00,0x01],
+    "READ_TARGET_SPEED":  [0x01,0x03,0x27,0x11,0x00,0x01],
+    "READ_TARGET_ANGLE":  [0x01,0x03,0x27,0x12,0x00,0x01],
+    "READ_VOLT_UPPER":    [0x01,0x03,0x27,0x14,0x00,0x01],
+    "READ_VOLT_LOWER":    [0x01,0x03,0x27,0x15,0x00,0x01],
+    "READ_CURR_UPPER":    [0x01,0x03,0x27,0x16,0x00,0x01],
+    "READ_CLOSE_ANGLE":   [0x01,0x03,0x27,0x1C,0x00,0x01],
+    "READ_OPEN_ANGLE":    [0x01,0x03,0x27,0x1D,0x00,0x01],
+    "READ_CURR_DETECT":   [0x01,0x03,0x27,0x1E,0x00,0x01],
+
+    # --- 霍尔方向 (0x3710) ---
+    "HALL_NORMAL":  [0x01,0x06,0x37,0x10,0x00,0x00],
+    "HALL_INVERT":  [0x01,0x06,0x37,0x10,0x00,0x01],
+
+    # --- 电机方向 (0x3711) ---
+    "MOTOR_NORMAL": [0x01,0x06,0x37,0x11,0x00,0x00],
+    "MOTOR_INVERT": [0x01,0x06,0x37,0x11,0x00,0x01],
+
+    # --- 清除故障 (0x2740) ---
+    "CLEAR_ALL":    [0x01,0x06,0x27,0x40,0x00,0x00],
 }
 
+# 动态计算所有 CRC
+PRESET_CMDS = {k: make_frame(v) for k, v in PRESET_CMDS.items()}
 
-def describe_fault_bits(bits):
-    """Convert fault bit mask to readable description"""
-    if bits == 0:
-        return "Clear all faults"
-    names = []
-    for mask, name in FAULT_NAMES.items():
-        if bits & mask:
-            names.append(name)
-    if not names:
-        return f"Unknown fault bits(0x{bits:04X})"
-    return " + ".join(names)
-
+print("=" * 60)
+print("  Modbus RTU 指令生成器")
+print("=" * 60)
+print(f"  设备地址: {NODE_ID}")
+print(f"  操作:     {OPERATION}")
 
 # =============================================================================
-# Generate command
+# 生成指令
 # =============================================================================
-print("=" * 50)
-print(f"Device addr: {NODE_ID}")
-print(f"Operation:   {OPERATION}")
-if OPERATION == "READ":
-    print(f"Register:    0x{REG_ADDR:04X}")
-elif OPERATION == "WRITE":
-    print(f"Register:    0x{REG_ADDR:04X}")
-    print(f"Write value: {WRITE_VALUE} (0x{to_u16(WRITE_VALUE):04X})")
-elif OPERATION == "CLEAR_FAULT":
-    print(f"Fault reg:   0x2740 (REG_FAULT_STATUS)")
-    print(f"Clear bits:  0x{CLEAR_FAULT_BITS:04X} -> {describe_fault_bits(CLEAR_FAULT_BITS)}")
-print("=" * 50)
 
 if OPERATION == "READ":
+    print(f"  寄存器:   0x{REG_ADDR:04X}")
+    print("=" * 60)
     cmd = make_frame([NODE_ID, 0x03, (REG_ADDR >> 8) & 0xFF, REG_ADDR & 0xFF, 0x00, 0x01])
-    print(f"\nSend: {cmd}")
-    print(f"Resp: {NODE_ID:02X} 03 02 XX XX CRC")
-    print(f"  XX XX = value at 0x{REG_ADDR:04X}")
+    print(f"\n  发送: {cmd}")
+    print(f"  应答: {NODE_ID:02X} 03 02 XX XX CRC  (XX XX = 寄存器值)")
 
 elif OPERATION == "WRITE":
     val = to_u16(WRITE_VALUE)
+    print(f"  寄存器:   0x{REG_ADDR:04X}")
+    print(f"  写入值:   {WRITE_VALUE} (0x{val:04X})")
+    print("=" * 60)
     cmd = make_frame([NODE_ID, 0x06, (REG_ADDR >> 8) & 0xFF, REG_ADDR & 0xFF,
                       (val >> 8) & 0xFF, val & 0xFF])
-    print(f"\nSend: {cmd}")
-    print(f"Resp: {NODE_ID:02X} 06 {REG_ADDR >> 8:02X} {REG_ADDR & 0xFF:02X} {val >> 8:02X} {val & 0xFF:02X} CRC (echo)")
-    print(f"  Echo back the write command on success")
+    print(f"\n  发送: {cmd}")
+    print(f"  应答: 回显相同帧")
 
 elif OPERATION == "CLEAR_FAULT":
-    # Write REG_FAULT_STATUS (0x2740) with fault bits to clear
     val = CLEAR_FAULT_BITS
+    print(f"  清除位:   0x{val:04X}")
+    print("=" * 60)
     cmd = make_frame([NODE_ID, 0x06, 0x27, 0x40,
                       (val >> 8) & 0xFF, val & 0xFF])
-    print(f"\nSend: {cmd}")
-    print(f"Resp: {NODE_ID:02X} 06 27 40 {val >> 8:02X} {val & 0xFF:02X} CRC (echo)")
-    print(f"  Echo back the write command on success")
-    print(f"")
-    print(f"  Call chain:")
-    print(f"    Modbus write 0x2740 = 0x{val:04X}")
-    print(f"    -> FaultHandler_ClearFault()")
-    print(f"    -> Voltage_Device_ClearAlarm() + Motor_ClearVoltageBlock()")
-    print(f"    -> RealTime_ClearFault(0x{val:04X})")
+    print(f"\n  发送: {cmd}")
 
 elif OPERATION == "CTRL_CMD":
-    # Write REG_CTRL_CMD (0x2720) with control command value
     val = CTRL_CMD_VALUE
-
-    # Describe the command
     desc_parts = []
-    if val & 0x0001:
-        desc_parts.append("START")
-    if val & 0x0002:
-        desc_parts.append("STOP")
-    if val & 0x0004:
-        desc_parts.append("ESTOP")
-    if val & 0x0010:
-        desc_parts.append("FWD")
-    if val & 0x0020:
-        desc_parts.append("REV")
+    if val & 0x0001: desc_parts.append("START")
+    if val & 0x0002: desc_parts.append("STOP")
+    if val & 0x0004: desc_parts.append("ESTOP")
+    if val & 0x0008: desc_parts.append("RESET")
+    if val & 0x0010: desc_parts.append("FWD")
+    if val & 0x0020: desc_parts.append("REV")
     desc = " + ".join(desc_parts) if desc_parts else "NONE"
-
+    print(f"  命令:     0x{val:04X} = {desc}")
+    print("=" * 60)
     cmd = make_frame([NODE_ID, 0x06, 0x27, 0x20,
                       (val >> 8) & 0xFF, val & 0xFF])
-    print(f"\nSend: {cmd}")
-    print(f"Resp: {NODE_ID:02X} 06 27 20 {val >> 8:02X} {val & 0xFF:02X} CRC (echo)")
-    print(f"  Echo back the write command on success")
-    print(f"")
-    print(f"  Command: 0x{val:04X} = {desc}")
-    print(f"  -> EventBus_Publish(TOPIC_MANUAL_RS485)")
-    print(f"  -> Motor_OnManualIO() -> motor arbiter")
+    print(f"\n  发送: {cmd}")
 
-else:
-    print(f"\nError: unknown OPERATION '{OPERATION}', "
-          f"use READ, WRITE, CLEAR_FAULT or CTRL_CMD")
+# =============================================================================
+# 常用指令速查表
+# =============================================================================
+print(f"\n{'='*60}")
+print("  常用指令速查 (已含 CRC)")
+print(f"{'='*60}")
+for name, frame in PRESET_CMDS.items():
+    print(f"  {name:<18} {frame}")
+print(f"{'='*60}")
 
-input()
+input("\n按 Enter 退出...")
