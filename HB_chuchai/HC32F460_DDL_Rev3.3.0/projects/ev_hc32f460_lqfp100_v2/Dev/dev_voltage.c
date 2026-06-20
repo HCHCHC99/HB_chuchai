@@ -51,7 +51,7 @@ static void Voltage_CalcBusVoltage(Voltage_Device_t* pstcDev) {
     if (!pstcDev) return;
     
     // 母线电压(mV) = ADC测量点电压(mV) × 分压比
-    pstcDev->u32BusVoltageMv = (uint32_t)pstcDev->u16AdcVoltageMv * VOLTAGE_DIVIDER_RATIO;
+    pstcDev->u32BusVoltageMv = (uint32_t)pstcDev->u16AdcVoltageMv * VOLTAGE_DIVIDER_RATIO + VOLTAGE_COMPENSATION_MV;
     
     // 母线电压(V)×100 = 母线电压(mV) / 10
     // 例如：24000mV → 2400 (即24.00V)

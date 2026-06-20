@@ -26,11 +26,15 @@
 #endif
 
 
-// ========== 电机控制模式宏 ==========
-// 0 = GPIO 模式（PB8/PB9 直接 IO 控制正反转/停止）
-// 1 = PWM 模式（PB6/PB7/PB8/PB9 四通道 PWM 占空比控制，缓启动/缓停）
-#ifndef MOTOR_CONTROL_MODE
-#define MOTOR_CONTROL_MODE  1  // 默认使用 PWM 模式
+// ========== 硬件板本：电机控制模式 ==========
+// 由 main.h 的 BOARD_VERSION 统一管理
+#include "main.h"
+#if BOARD_VERSION == 0
+    // 原HB_chuchai板：GPIO PB8/PB9 直接控制正反转/停止
+    #define MOTOR_CONTROL_MODE  0
+#else
+    // 整合板：4通道 PWM 占空比控制，缓启动/缓停
+    #define MOTOR_CONTROL_MODE  1
 #endif
 
 // ========== ����豸�����붨�� ==========

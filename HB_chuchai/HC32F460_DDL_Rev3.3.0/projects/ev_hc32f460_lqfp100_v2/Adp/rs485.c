@@ -18,10 +18,18 @@
 #define USART_UNIT          (CM_USART4)
 #define USART_FCG_ENABLE()  FCG_Fcg1PeriphClockCmd(FCG1_PERIPH_USART4, ENABLE)
 
-/* RS485 ����������Ŷ��� */
-#define RS485_DIR_PORT      (GPIO_PORT_A)
-#define RS485_DIR_PIN       (GPIO_PIN_03)
+#include "main.h"
 
+/* 硬件板本：RS485 方向控制引脚 */
+#if BOARD_VERSION == 0
+    // 原HB_chuchai板
+    #define RS485_DIR_PORT      (GPIO_PORT_B)
+    #define RS485_DIR_PIN       (GPIO_PIN_14)
+#else
+    // 整合板
+    #define RS485_DIR_PORT      (GPIO_PORT_A)
+    #define RS485_DIR_PIN       (GPIO_PIN_03)
+#endif
 /* RS485 �������ģʽѡ�� */
 #define RS485_DIR_MODE_1    0
 #define RS485_DIR_MODE_2    1

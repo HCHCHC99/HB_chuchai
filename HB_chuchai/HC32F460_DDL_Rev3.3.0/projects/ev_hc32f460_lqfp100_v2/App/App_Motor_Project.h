@@ -92,14 +92,19 @@
 // --- ADC 电流采样管脚 ---
 #define PIN_ADC_CURRENT_PORT    GPIO_PORT_A
 #define PIN_ADC_CURRENT_PIN     GPIO_PIN_05
-#define PIN_ADC_CURRENT_CH      (5)
-
-// --- ADC 电压采样管脚 ---
-//   原 HB_chuchai: PA04, CH4
-//   整合板: PA06, CH6
-#define PIN_ADC_VOLTAGE_PORT    GPIO_PORT_A
-#define PIN_ADC_VOLTAGE_PIN     GPIO_PIN_06     // 整合板 PA06; 原 HB_chuchai: GPIO_PIN_04
-#define PIN_ADC_VOLTAGE_CH      (6)             // 整合板 CH6;  原 HB_chuchai: (4)
+// --- 硬件板本：ADC 电压检测管脚 ---
+// 由 main.h 的 BOARD_VERSION 统一管理
+#if BOARD_VERSION == 0
+    // 原HB_chuchai板
+    #define PIN_ADC_VOLTAGE_PORT    GPIO_PORT_A
+    #define PIN_ADC_VOLTAGE_PIN     GPIO_PIN_04
+    #define PIN_ADC_VOLTAGE_CH      (4)
+#else
+    // 整合板
+    #define PIN_ADC_VOLTAGE_PORT    GPIO_PORT_A
+    #define PIN_ADC_VOLTAGE_PIN     GPIO_PIN_06
+    #define PIN_ADC_VOLTAGE_CH      (6)
+#endif
 
 // --- IO 正转/反转管脚 ---
 #define PIN_IO_FWD_PORT         GPIO_PORT_B

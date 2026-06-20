@@ -21,10 +21,16 @@
 
 
 #endif
-// ========== 电流传感器类型选择 ==========
-// 0: 霍尔电流传感器模式 (中点1650mV, 灵敏度66mV/A, 量程±25A)
-// 1: 差分运放模式 (Vout = I * 0.1, 0mV为零点, 100mV/A)
-#define SENSOR_TYPE_DIFF_AMP_ENABLE    1   // 1=差分运放, 0=霍尔电流传感器
+// ========== 硬件板本：电流传感器类型选择 ==========
+// 由 main.h 的 BOARD_VERSION 统一管理
+#include "main.h"
+#if BOARD_VERSION == 0
+    // 原HB_chuchai板：霍尔电流传感器 (中点1650mV, 灵敏度66mV/A, 量程±25A)
+    #define SENSOR_TYPE_DIFF_AMP_ENABLE    0
+#else
+    // 整合板：差分运放 (Vout = I * 0.1, 0mV为零点, 100mV/A)
+    #define SENSOR_TYPE_DIFF_AMP_ENABLE    1
+#endif
 
 // ========== 调试宏定义 ==========
 #ifdef DEV_SENSOR
