@@ -848,6 +848,11 @@
               <FileType>1</FileType>
               <FilePath>..\..\Utils\App_Params.c</FilePath>
             </File>
+            <File>
+              <FileName>param_validator.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Utils\param_validator.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
@@ -1693,6 +1698,11 @@
               <FileName>App_Params.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\Utils\App_Params.c</FilePath>
+            </File>
+            <File>
+              <FileName>param_validator.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Utils\param_validator.c</FilePath>
             </File>
           </Files>
         </Group>

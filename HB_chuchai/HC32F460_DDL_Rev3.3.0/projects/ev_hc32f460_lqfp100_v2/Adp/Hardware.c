@@ -253,7 +253,7 @@ void Hardware_Init(void)
     TMR0_Unit1_Init(TMR0_CHANNEL_B_1, 500UL, TICK_RESET_1);
     TMR0_Unit1_Init(TMR0_CHANNEL_A_1, 1000UL, TICK_RESET_1);    
         
-    tickTimer_DelayMs(1000);
+    tickTimer_DelayMs(50);
     // Output_GPIO_Init(GPIO_LED_PORT, GPIO_LED_PIN, GPIO_INIT_HIGH);
 
     /* 2. AOS 事件路由初始化
