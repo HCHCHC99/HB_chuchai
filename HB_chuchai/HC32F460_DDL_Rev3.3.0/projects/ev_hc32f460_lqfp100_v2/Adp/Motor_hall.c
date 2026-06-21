@@ -78,6 +78,8 @@ typedef struct {
     uint8_t is_running;
     uint8_t need_update;
     
+    uint32_t last_total;        /* 上次脉冲总数 (用于增量累积) */
+    uint8_t  first_run;         /* 首次运行标志 */
 } motor_hall_instance_t;
 
 #define MAX_MOTOR_INSTANCES     (4)
@@ -504,6 +506,8 @@ motor_hall_handle_t motor_hall_create(const motor_hall_config_t* config)
     inst->hall_status = HALL_STATUS_NONE;
     
     inst->active_hall_count = calculate_active_hall_count(inst);
+    inst->last_total = 0;
+    inst->first_run = 1;
     
     uint8_t j;
     for (j = 0; j < RPM_WINDOW_SIZE; j++) {
@@ -567,32 +571,35 @@ void motor_hall_update(motor_hall_handle_t handle)
     
     if (nbDelay_IsComplete_noclose(&inst->hall_check_timer)) {
         check_hall_status(inst);
+        nbDelay_Start(&inst->hall_check_timer);
+    }
 
-        /* 霍尔脉冲累积计数 */
-        {
-            uint32_t total = inst->hall_pulse_counts[0] + inst->hall_pulse_counts[1];
-            static uint32_t last_total = 0;
-            static uint8_t first_run = 1;
-            if (first_run) {
-                last_total = total;
-                first_run = 0;
-            }
-            if (total != last_total) {
+    /* 霍尔脉冲累积计数 (每次 update 都跑, 1ms 间隔, 不受 1s 定时器限制) */
+    {
+        uint32_t total = inst->hall_pulse_counts[0] + inst->hall_pulse_counts[1];
+        if (inst->first_run) {
+            inst->last_total = total;
+            inst->first_run = 0;
+        }
+        if (total != inst->last_total) {
             uint32_t delta;
-            if (total > last_total) {
-                delta = total - last_total;
+            if (total > inst->last_total) {
+                delta = total - inst->last_total;
             } else {
-                delta = last_total - total;  /* 计数器溢出回绕 */
+                delta = inst->last_total - total;  /* 计数器溢出回绕 */
             }
-            if (inst->current_direction == MOTOR_DIRECTION_FORWARD) {
+            /* 使用最近有效方向, STOP/NONE 时回退到 last_valid_direction */
+            motor_direction_t dir = inst->current_direction;
+            if (dir == MOTOR_DIRECTION_STOP || dir == MOTOR_DIRECTION_NONE) {
+                dir = inst->last_valid_direction;
+            }
+            if (dir == MOTOR_DIRECTION_FORWARD) {
                 g_s32HallPulseAccum += (int32_t)delta;  /* 开窗(逆时针) → 加 */
-            } else if (inst->current_direction == MOTOR_DIRECTION_REVERSE) {
+            } else if (dir == MOTOR_DIRECTION_REVERSE) {
                 g_s32HallPulseAccum -= (int32_t)delta;  /* 关窗(顺时针) → 减 */
             }
-            last_total = total;
+            inst->last_total = total;
         }
-    }
-        nbDelay_Start(&inst->hall_check_timer);
     }
 }
 
@@ -703,6 +710,8 @@ void motor_hall_reset_counts(motor_hall_handle_t handle)
     inst->hall_a_last_second_count = 0;
     inst->hall_b_last_second_count = 0;
     inst->hall_status = HALL_STATUS_NONE;
+    inst->last_total = 0;
+    inst->first_run = 1;
     __enable_irq();
 }
 

@@ -386,7 +386,7 @@ static void RegisterAllDevices(void) {
         .u8MotorHallDevId = ID_MOTOR_HALL,                      // �󶨵�������豸
         .u8MotorArbiterDevId = ID_MOTOR,                        // �������򣨵���ٲ�����        
         .u8SensorDevId = ID_SENSOR_CURRENT,                     // �󶨵����������豸
-        .fReductionRatio = (float)g_AppParam.rturn_reduction_ratio,  // ��Flash��ȡ ���ٱ�
+        .fReductionRatio = (float)g_AppParam.rturn_reduction_ratio / 10.0f,  // ��Flash��ȡ ���ٱ�
         .fMaxAngle = RTURN_MAX_ANGLE,                           // ���Ƕ�
         .fMinAngle = RTURN_MIN_ANGLE,                           // ��С�Ƕ�
         .u8ReverseOutput = RTURN_REVERSE_OUTPUT,                // ����������־
@@ -706,7 +706,7 @@ void App_ReloadConfig(void)
     if (g_rturn_dev != NULL)
     {
         g_rturn_dev->stcConfig.fReductionRatio =
-            (float)g_AppParam.rturn_reduction_ratio;
+            (float)g_AppParam.rturn_reduction_ratio / 10.0f;
         MAIN_D("[RELOAD] Reduction ratio: %.1f\r\n",
                (double)g_rturn_dev->stcConfig.fReductionRatio);
     }

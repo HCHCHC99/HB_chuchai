@@ -23,6 +23,13 @@ static const ParamRule_t s_rules[] = {
      *   单位: 1ms, step=20 */
     { REG_CURRENT_DETECT_MS,       0,  2000,   20 },
 
+    /* 减速比 (0x3712): 1.0 ~ 6553.5, 步进 0.1
+     *   单位: 0.1, 寄存器值/b = 实际减速比, 步进0=不做精度取整 */
+    { REG_RTURN_REDUCTION_RATIO,  10, 65535,    0 },
+
+    /* 电机极对数 (0x3713): 1 ~ 100, 步进 1 */
+    { REG_MOTOR_HALL_POLE_PAIRS,   1,   100,    0 },
+
     /* 哨兵: 全零表示规则表结束 */
     { 0, 0, 0, 0 }
 };
