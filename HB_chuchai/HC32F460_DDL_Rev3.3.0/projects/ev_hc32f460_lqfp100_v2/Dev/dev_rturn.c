@@ -5,7 +5,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include "dev_sensor.h"
-#include "dev_motor.h"   
+#include "dev_motor.h"
+#include "App_Params.h"   /* g_s32HallPulseAccum for pulse-direct angle */
 
 static uint32_t s_u32LastLockPrintTime = 0;
 static uint32_t s_u32LastLockDebugPrintTime = 0;
@@ -171,6 +172,7 @@ static void RTurn_UpdateAngle(RTurn_Device_t* pstcDev) {
                 
                 if (u8CheckDir == RTURN_DIR_REVERSE) {
                     /* 关闭时过流：重置角度为下限位角度，并标记为已校准 */
+                    g_s32HallPulseAccum = 0;
                     pstcDev->fCurrentAngle = pstcDev->stcConfig.fMinAngle;
                     if (!pstcDev->u8Calibrated) {
                         pstcDev->u8Calibrated = 1;
@@ -229,6 +231,7 @@ static void RTurn_UpdateAngle(RTurn_Device_t* pstcDev) {
                     if (u8DesiredRTurnDir == RTURN_DIR_REVERSE) {
                         /* 关闭时过流：重置角度为下限位角度（仅在校准状态下才重置） */
                         if (pstcDev->u8Calibrated) {
+                            g_s32HallPulseAccum = 0;
                             pstcDev->fCurrentAngle = pstcDev->stcConfig.fMinAngle;
                         }
                     }
@@ -278,17 +281,15 @@ static void RTurn_UpdateAngle(RTurn_Device_t* pstcDev) {
             }
         }
         
-        float fDeltaAngle = pstcDev->fCurrentSpeed * ((float)u32DeltaMs / 1000.0f);
-        
-        if (pstcDev->u8CurrentDir == RTURN_DIR_FORWARD) {
-            pstcDev->fCurrentAngle += fDeltaAngle;
-        } else if (pstcDev->u8CurrentDir == RTURN_DIR_REVERSE) {
-            pstcDev->fCurrentAngle -= fDeltaAngle;
-        }
+        /* Pulse-direct angle: each Hall edge = 360/12/ratio degrees.
+         * Eliminates RPM estimation error during acceleration/deceleration.
+         * g_s32HallPulseAccum is direction-aware (+FWD/-REV), updated every 1ms. */
+        pstcDev->fCurrentAngle = pstcDev->stcConfig.fMinAngle +
+            (float)g_s32HallPulseAccum * 360.0f / 12.0f / pstcDev->stcConfig.fReductionRatio;
         
         // 正转角度上限检测（角度到位锁死）
         if (pstcDev->fCurrentAngle >= pstcDev->stcConfig.fMaxAngle) {
-            pstcDev->fCurrentAngle = pstcDev->stcConfig.fMaxAngle;
+            // NOTE: 不钳位角度，保留开窗超调真实值供读取
             
             // 只有当限位未被触发时才发布事件
             if (!pstcDev->u8LimitTriggered) {
@@ -347,6 +348,7 @@ static void RTurn_HandleOvercurrent(RTurn_Device_t* pstcDev) {
                 RTURN_OUT("LIMIT TRIGGERED (uncalibrated, FORWARD)! Lock direction, no calibration\r\n");
             } else {
                 /* 关闭过流：校准成功，重置角度为下限位角度 */
+                g_s32HallPulseAccum = 0;
                 pstcDev->fCurrentAngle = pstcDev->stcConfig.fMinAngle;
                 pstcDev->u8Calibrated = 1;
                 RTURN_OUT("LIMIT TRIGGERED (uncalibrated, REVERSE)! Calibrated=1, Angle=%ld.%02ld deg\r\n",
@@ -369,6 +371,7 @@ static void RTurn_HandleOvercurrent(RTurn_Device_t* pstcDev) {
             if (u8CurrentDir == RTURN_DIR_REVERSE) {
                 /* 关闭时过流：重置角度为下限位角度 */
                 pstcDev->fCurrentAngle = pstcDev->stcConfig.fMinAngle;
+                g_s32HallPulseAccum = 0;
             }
             /* 打开时过流：不重置角度，保持当前角度 */
             

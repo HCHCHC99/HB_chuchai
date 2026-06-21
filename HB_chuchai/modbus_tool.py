@@ -337,6 +337,7 @@ def menu_dev_options():
         print("  3. 计算霍尔脉冲")
         print("  4. 读霍尔脉冲")
         print("  5. 重置霍尔脉冲")
+        print("  6. 计算实时角度")
         print("  0. 返回")
         c = input("选择: ").strip()
         if c == '0': return
@@ -350,6 +351,8 @@ def menu_dev_options():
             menu_read_hall_pulse()
         elif c == '5':
             menu_reset_hall_pulse()
+        elif c == '6':
+            menu_calc_realtime_angle()
         else:
             print("无效")
 
@@ -472,6 +475,34 @@ def menu_reset_hall_pulse():
     node = ask_node()
     req_data = [node, 0x06, 0x37, 0x14, 0x00, 0x00]
     print_cmd(req_data, node)
+
+def menu_calc_realtime_angle():
+    print("\n====== 计算实时角度 =====")
+    print("  粘贴 Modbus 回令帧 (如: 01 03 02 03 93 F8 D9)")
+    s = input("  回令: ").strip()
+    try:
+        parts = s.split()
+        if len(parts) < 4:
+            print("  格式错误: 至少需要4字节")
+            return
+        raw = [int(x, 16) for x in parts]
+
+        if raw[1] == 0x03:
+            byte_count = raw[2]
+            if len(raw) < 3 + byte_count:
+                print(f"  数据不完整, 需要 {3+byte_count} 字节")
+                return
+            data_bytes = raw[3:3+byte_count]
+            # Modbus大端序: int16 = (H<<8)|L
+            val = (data_bytes[0] << 8) | data_bytes[1]
+            if val > 32767:
+                val = val - 65536  # 有符号 int16
+            angle = val * 0.1
+            print(f"  实时角度: {angle:.1f}°")
+        else:
+            print("  不是 0x03 回令帧")
+    except Exception as e:
+        print(f"  解析失败: {e}")
 
 def menu_calc_hall_pulse():
     print("\n====== 计算霍尔脉冲 → 角度 =====")
